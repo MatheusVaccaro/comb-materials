@@ -4,28 +4,61 @@ import Combine
 var subscriptions = Set<AnyCancellable>()
 
 example(of: "Create a Blackjack card dealer") {
-  let dealtHand = PassthroughSubject<Hand, HandError>()
-  
-  func deal(_ cardCount: UInt) {
-    var deck = cards
-    var cardsRemaining = 52
-    var hand = Hand()
+    let dealtHand = PassthroughSubject<Hand, HandError>()
     
-    for _ in 0 ..< cardCount {
-      let randomIndex = Int.random(in: 0 ..< cardsRemaining)
-      hand.append(deck[randomIndex])
-      deck.remove(at: randomIndex)
-      cardsRemaining -= 1
+    func deal(_ cardCount: UInt) {
+        var deck = cards
+        var cardsRemaining = 52
+        var hand = Hand()
+        
+        for _ in 0 ..< cardCount {
+            let randomIndex = Int.random(in: 0 ..< cardsRemaining)
+            hand.append(deck[randomIndex])
+            deck.remove(at: randomIndex)
+            cardsRemaining -= 1
+        }
+        
+        // Add code to update dealtHand here
+        do {
+            let points = try evaluatePoints(of: hand)
+            dealtHand.send(hand)
+        } catch {
+            if let handError = error as? HandError {
+                dealtHand.send(completion: .failure(handError))
+            }
+        }
     }
     
-    // Add code to update dealtHand here
+    func evaluatePoints(of hand: Hand) throws -> Int {
+        let handPoints = hand.points
+        
+        guard handPoints <= 21 else {
+            throw HandError.busted
+        }
+        
+        return handPoints
+    }
     
-  }
-  
-  // Add subscription to dealtHand here
-  
-  
-  deal(3)
+    // Add subscription to dealtHand here
+    dealtHand
+        .print()
+        .sink(
+            receiveCompletion: { completion in
+                switch completion {
+                case .finished:
+                    print("Dealer finished.")
+                case .failure(let error):
+                    print("Dealer error: \(error)")
+                }
+            },
+            receiveValue: { value in
+                print("Received hand: \(value.cardString)")
+                print("Hand points: \(value.points)")
+            }
+        )
+        .store(in: &subscriptions)
+    
+    deal(3)
 }
 
 /// Copyright (c) 2023 Kodeco Inc.
