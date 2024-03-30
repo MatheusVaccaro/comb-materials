@@ -3,7 +3,14 @@ import Combine
 
 var subscriptions = Set<AnyCancellable>()
 
-<#Add your code here#>
+let publisher = (1...100).publisher
+
+publisher
+    .dropFirst(50)
+    .prefix(20)
+    .filter { $0 % 2 == 0 }
+    .sink { print($0) }
+    .store(in: &subscriptions)
 
 /// Copyright (c) 2023 Kodeco Inc.
 ///
