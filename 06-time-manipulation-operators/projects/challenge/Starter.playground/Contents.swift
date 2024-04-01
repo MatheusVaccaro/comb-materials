@@ -7,7 +7,31 @@ PlaygroundPage.current.needsIndefiniteExecution = true
 // A subject you get values from
 let subject = PassthroughSubject<Int, Never>()
 
-<#Add your code here#>
+let strings = subject
+    .collect(
+        .byTime(
+            DispatchQueue.main,
+            .milliseconds(500)
+        )
+    )
+    .map { intCharacters in
+        let characters = intCharacters.map { intCharacter in
+            Character(Unicode.Scalar(intCharacter)!)
+        }
+        return String(characters)
+    }
+
+let debouncer = subject
+    .debounce(
+        for: .milliseconds(900),
+        scheduler: DispatchQueue.main)
+    .map { _ in
+        "👏"
+    }
+
+let subscription = strings
+    .merge(with: debouncer)
+    .sink { print($0) }
 
 // Let's roll!
 startFeeding(subject: subject)
