@@ -32,6 +32,7 @@
 
 import UIKit
 import Photos
+import Combine
 
 class CollageNeueModel: ObservableObject {
   static let collageSize = CGSize(width: UIScreen.main.bounds.width, height: 200)
@@ -40,17 +41,48 @@ class CollageNeueModel: ObservableObject {
   
   private(set) var lastSavedPhotoID = ""
   private(set) var lastErrorMessage = ""
+  
+  private var subscriptions = Set<AnyCancellable>()
+  private let images = CurrentValueSubject<[UIImage], Never>([])
+  
+  let updateUISubject = PassthroughSubject<Int, Never>()
+  
+  @Published var imagePreview: UIImage?
+  
+  private(set) var selectedPhotosSubject = PassthroughSubject<UIImage, Never>()
 
   func bindMainView() {
-    
+    // 1
+    images
+    // 2
+      .handleEvents(receiveOutput: { [weak self] photos in
+        self?.updateUISubject.send(photos.count)
+      })
+      .map { photos in
+        UIImage.collage(images: photos, size: Self.collageSize)
+      }
+    // 3
+      .assign(to: &$imagePreview)
   }
 
   func add() {
+    selectedPhotosSubject = PassthroughSubject<UIImage, Never>()
     
+    let newPhotos = selectedPhotosSubject
+    
+    newPhotos
+      .map { [unowned self] newImage in
+        // 1
+        return self.images.value + [newImage]
+      }
+    // 2
+      .assign(to: \.value, on: images)
+    // 3
+      .store(in: &subscriptions)
   }
 
   func clear() {
-    
+    images.send([])
   }
 
   func save() {
@@ -97,7 +129,7 @@ class CollageNeueModel: ObservableObject {
         return
       }
       
-      // Send the selected image
+      self.selectedPhotosSubject.send(image)
     }
   }
 }
